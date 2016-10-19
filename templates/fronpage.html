@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Myblogcontents</title>
+	<style type="text/css">
+		.displayinsamerow{
+			display: flex;
+		}
+	    .col6{
+	    	width: 50%;
+	    }
+        #displaytime{
+        	text-align: right;
+        }
+	</style>
+</head>
+<body>
+ <form method="post">
+ {% for i in posts %}
+   <div class="displayinsamerow">
+     <div class="col6"><b>{{i.subject}}</b></div>
+     <div class="col6" id="displaytime">{{i.created}}</div>
+   </div>
+   <hr>
+   {{i.content}}
+   <br>
+   <br>
+ {% endfor %}
+ </form>
+</body>
+</html>
+ 
