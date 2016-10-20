@@ -89,81 +89,79 @@ class MainPage(BaseHandler):
 #welcomes the registered user
 class WelcomeMessage(BaseHandler):
 	def get(self):
-		self.render('welcome.html')
+		name = self.request.get('user')
+		self.render('welcome.html',user=name)
 
 #check for form validation 
 check = True
 #check if name is valid
 def checkname(getname):
-	if USER_RE.match(getname):
-		check = True
-		return getname
-	else:
-		check = False
-		return "Enter valid name"
+	return getname and USER_RE.match(getname)
 
 #check if password is valid
 def checkpassword(getpassword,getconfirmationpassword):
-	if (getpassword == getconfirmationpassword) and PASS_RE.match(getconfirmationpassword):
-		check = True
-		return getconfirmationpassword
-	else:
-		check = False
-		return "Enter valid password"
+	return (getpassword == getconfirmationpassword) and PASS_RE.match(getconfirmationpassword)
         
 #check if mail id is valid
 def checkmail(getemail):
-	if MAIL_RE.match(getemail):
-		check = True
-		return getemail
-	else:
-		check = False
-		return "Enter valid mail id"
+	return not getemail or  MAIL_RE.match(getemail)
 
 class user(db.Model):
 	name = db.StringProperty(required = True)
 	password = db.TextProperty(required = True)
-	email = db.StringProperty(required = False)
+	email = db.StringProperty()
+	@classmethod
+	def vailditynamecheck(cls,name):
+		u = user.all().filter('name =', name).get()
+		return u
 
 class userhandler(BaseHandler):
-	def get(self,name,password,mail):
-		res = name
-		print name
-		checkuser = db.Key.from_path('user',str(name))
-		resulofusercheck = db.get(checkuser)
-		print resulofusercheck
-
-		if resulofusercheck == True:
-			error = "user name already exists"
-			self.render('signup.html',error=error)
+	def get(self):
+		name = self.request.get('name')
+		if USER_RE.match(name) and name:
+			self.redirect('/welcome?user='+name)
 		else:
-			temp = user(name = name,password = password,mail=mail)
-			temp.put()
-			print temp
-			self.render('signup.html',name=name,password=password,email=mail)
+			self.redirect('/register')
         	
 #Helps user to register 
 class signup(BaseHandler):
 	def get(self):
 		self.render('signup.html')
 	def post(self):
-		getname = self.request.get('name')
-		getpassword = self.request.get('password')
-		getconfirmationpassword = self.request.get('re-typepassword')
-		getemail = self.request.get('email')
-		resname = checkname(getname)
-		respass = checkpassword(getpassword,getconfirmationpassword)
-		resmail = checkmail(getemail)
-		
-		if (resname and respass and resmail) == True:
-			self.redirect('/usercheck',name=resname,password=respass,mail=resmail)
-		elif (resname and respass) == True:
-			self.redirect('/usercheck',name=resname,password=respass,mail="")
+		haverr = False
+		self.getname = self.request.get('name')
+		self.getpassword = self.request.get('password')
+		self.getconfirmationpassword = self.request.get('re-typepassword')
+		self.getemail = self.request.get('email')
+		params = dict(getname=self.getname,getpassword=self.getpassword,getemail=self.getemail)
+		if not checkname(self.getname):
+			params['error'] = "That's invalid name"
+			haverr = True
+		if not checkpassword(self.getpassword,self.getconfirmationpassword):
+			params['error'] = "Invalid password"
+			haverr = True
+		if not checkmail(self.getemail):
+			params['error'] = "Invalid mail id"
+			haverr = True
+
+		if haverr:
+			self.render('signup.html',**params)
 		else:
-			self.redirect('/welcome',getname)
+			self.success()
 
-
-app = webapp2.WSGIApplication([('/register',signup),
+class Register(signup):
+	def success(self):
+		print self.getname
+		usercheck = user.vailditynamecheck(self.getname)
+		if usercheck:
+			error="User already exists.Try new user name"
+			self.render('signup.html',error= error)
+		else:
+			temp = user(name = self.getname,password = self.getpassword,email = self.getemail)
+			temp.put()
+			self.redirect('/usercheck?name='+self.getname)
+			
+app = webapp2.WSGIApplication([('/register',Register),
 	                           ('/main',MainPage),
 	                           ('/newpage',NewPage), 
 	                           ('/postcontent/([0-9]+)',Postcontent),
